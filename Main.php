@@ -1,51 +1,133 @@
 <?php
  
-namespace OnlineSign;
+/*
+__PocketMine Plugin__
+name=MountCraft__AdvancedSigns
+description=
+version=2.0
+author=Killman2
+class=AdvancedTile
+apiversion=12,13
+*/
  
-use pocketmine\event\Listener;
+class AdvancedTile implements Plugin{   
+    private $api;
+    
+    public function __construct(ServerAPI $api, $server = false){
+        $this->api = $api;
+        $this->server = ServerAPI::request();
+    }
+    
+    public function init(){
+        $this->api->addHandler("tile.update", array($this, "eventHandler"), 5);
+        $this->api->schedule(20, array($this, "timerUpdateSign"), array(), true);
+    }
+    
+    public function eventHandler($data, $event)
+    {
+        switch($event)
+        {
+            case "tile.update":
+            if(!($data instanceof Tile)){return;}
+            if($data->class != TILE_SIGN){return;}
+            if ($data->data["Text1"] == 'online'){
+            $world = $this->api->level->get($data->data["Text2"]);
+                if ($world)
+                {
+                $players = count($this->server->clients);
+                $data->data["Text1"]="[SignStats]";
+                $data->data["Text2"]= $players ."/" .count($this->server->maxClients;
+                $data->data["Text3"]= "players online.";
+                $data->data["Text4"]= "===============================";
+                $this->api->tile->spawnToAll($data);
+                }
+                else
+                {
+                $data->data["Text1"]="ERROR";
+                $data->data["Text2"]="write online on";
+                $data->data["Text3"]="the first line";
+                $this->api->tile->spawnToAll($data);
+                }
+            }
+            break;
+        }
+    }
+    
+    public function updateSignText($tile, $target = false, $t1 = "", $t2 = "", $t3 = "", $t4 = ""){
+        if(!($tile instanceof Tile)){return;}
+        if($tile->class != TILE_SIGN){return;}
+        $nbt = new NBT();
+        $nbt->write(chr(NBT::TAG_COMPOUND)."\x00\x00");
+        
+        $nbt->write(chr(NBT::TAG_STRING));
+        $nbt->writeTAG_String("Text1");
+        $nbt->writeTAG_String($t1);
+        
+        $nbt->write(chr(NBT::TAG_STRING));
+        $nbt->writeTAG_String("Text2");
+        $nbt->writeTAG_String($t2);
+            
+        $nbt->write(chr(NBT::TAG_STRING));
+        $nbt->writeTAG_String("Text3");
+        $nbt->writeTAG_String($t3);
+        
+        $nbt->write(chr(NBT::TAG_STRING));
+        $nbt->writeTAG_String("Text4");
+        $nbt->writeTAG_String($t4);
+        $nbt->write(chr(NBT::TAG_STRING));
+        $nbt->writeTAG_String("id");
+        $nbt->writeTAG_String($tile->class);
+        $nbt->write(chr(NBT::TAG_INT));
+        $nbt->writeTAG_String("x");
+        $nbt->writeTAG_Int((int) $tile->x);
+    
+        $nbt->write(chr(NBT::TAG_INT));
+        $nbt->writeTAG_String("y");
+        $nbt->writeTAG_Int((int) $tile->y);
+                
+        $nbt->write(chr(NBT::TAG_INT));
+        $nbt->writeTAG_String("z");
+        $nbt->writeTAG_Int((int) $tile->z);
+                
+        $nbt->write(chr(NBT::TAG_END)); 
  
-use pocketmine\level\Position;
-use pocketmine\tile\Tile;
-use pocketmine\plugin\PluginBase;
- 
-use pocketmine\utils\Config;
- 
-use pocketmine\scheduler\CallbackTask;
- 
-class OnlineSign extends PluginBase implements Listener{
- 
- private $config;
- 
- public function onEnable(){
-  @mkdir($this->getDataFolder());
- 
- $this->config = (new Config($this->getDataFolder()."config.yml", Config::YAML, array(
- "x" => 138,
- "y" => 67,
- "z" => 120,
- "level" => 'world',
- )))->getAll();
- $this->getServer()->getPluginManager()->registerEvents($this, $this);
- $task = new CallbackTask(array($this, "repeatedFunction"), array("item 2"));
- $this->getServer()->getScheduler()->scheduleRepeatingTask($task, 20);
-   $this->getLogger()->info(TextFormat::RED . "[SignStats]" TextFormat::AQUA . "I'm sucsessfully loaded!");
- }
- 
- public function onEvent(EntityLevelChangeEvent $event){
- 
- }
- 
- public function repeatedFunction(){
- $tile = $this->getServer()->getLevel($this->config['level'])->getTile(new Position($this->config['x'], $this->config['y'], $this->config['z']));
- if($tile instanceof Tile){
-$tile->setText('[SignStats]', 'PLAYERS: '.count($this->getServer()->getOnlinePlayers()).'/'.$this->getServer()->getMaxPlayers(), 'TIME: '.date("H:i:s"), '------------------------------------');
- }
- }
- 
- public function onDisable(){
- $config = (new Config($this->getDataFolder()."config.yml", Config::YAML));
- $config->setAll($this->config);
- $config->save();
-   $this->getLogger()->info(TextFormat::RED . "[SignStats]" TextFromat::YELLOW . "I am sucsessfully unloaded! Hope you load me again :D");
- }
+        $pk = new EntityDataPacket();
+        $pk->x = $tile->x;
+        $pk->y = $tile->y;
+        $pk->z = $tile->z;
+        $pk->namedtag = $nbt->binary;
+        if($target instanceof Player){
+            $target->dataPacket($pk);
+        }else{
+            $players = $this->api->player->getAll($tile->level);
+            foreach($players as $pIndex => $player){
+                if($player->spawned == false){unset($players[$pIndex]);}
+            }
+            $this->api->player->broadcastPacket($players, $pk);
+        }
+    }
+    
+    public function timerUpdateSign(){
+        $tiles = array();
+        $l = $this->server->query("SELECT ID FROM tiles WHERE class = '".TILE_SIGN."';");
+        if($l !== false and $l !== true){
+            while(($t = $l->fetchArray(SQLITE3_ASSOC)) !== false){
+                $t = $this->api->tile->getByID($t["ID"]);
+                if($t instanceof Tile){
+                    $tiles[$t->id] = $t;
+                }
+            }
+        }
+        foreach($tiles as $tile){
+            if($tile->data["Text1"] == "[Sign Stats]"){
+            $lv = $this->api->level->get($tile->data["Text2"]);
+            if (!$lv){continue;}
+            $players = count($lv->players);
+            $this->updateSignText($tile, false,$tile->data["Text1"],$tile->data["Text2"], $players, $tile->data["Text4"]);
+            }
+        }
+    }
+    
+    public function __destruct(){   
+    }
 }
