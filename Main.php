@@ -2,15 +2,15 @@
  
 /*
 __PocketMine Plugin__
-name=MountCraft__AdvancedSigns
+name=SignStats
 description=
-version=2.0
+version=1.0.0
 author=Killman2
-class=AdvancedTile
+class=SignStats
 apiversion=12,13
 */
  
-class AdvancedTile implements Plugin{   
+class SignStats implements Plugin{   
     private $api;
     
     public function __construct(ServerAPI $api, $server = false){
