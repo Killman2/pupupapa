@@ -4,13 +4,13 @@
 __PocketMine Plugin__
 name=SignStats
 description=
-version=1.0.0
+version=1.0.1
 author=Killman2
 class=SignStats
-apiversion=12,13
+apiversion=11,12,13
 */
  
-class SignStats implements Plugin{   
+class SignStats implements Plugin{  
     private $api;
     
     public function __construct(ServerAPI $api, $server = false){
@@ -31,21 +31,20 @@ class SignStats implements Plugin{
             if(!($data instanceof Tile)){return;}
             if($data->class != TILE_SIGN){return;}
             if ($data->data["Text1"] == 'online'){
-            $world = $this->api->level->get($data->data["Text2"]);
+            $world = $this->api->level->getDefault();
                 if ($world)
                 {
-                $players = count($this->server->clients);
+                $players = count($world->players);
                 $data->data["Text1"]="[SignStats]";
-                $data->data["Text2"]= $players ."/" .count($this->server->maxClients;
-                $data->data["Text3"]= "players online.";
-                $data->data["Text4"]= "===============================";
+                $data->data["Text2"]= "Players Online:";
+                $data->data["Text3"]= $players;
+                $data->data["Text4"]= "============================";
                 $this->api->tile->spawnToAll($data);
                 }
                 else
                 {
                 $data->data["Text1"]="ERROR";
-                $data->data["Text2"]="write online on";
-                $data->data["Text3"]="the first line";
+                $data->data["Text2"]="ERROR";
                 $this->api->tile->spawnToAll($data);
                 }
             }
@@ -119,8 +118,8 @@ class SignStats implements Plugin{
             }
         }
         foreach($tiles as $tile){
-            if($tile->data["Text1"] == "[Sign Stats]"){
-            $lv = $this->api->level->get($tile->data["Text2"]);
+            if($tile->data["Text1"] == "[SignStats]"){
+            $lv = $this->api->level->getDefault();
             if (!$lv){continue;}
             $players = count($lv->players);
             $this->updateSignText($tile, false,$tile->data["Text1"],$tile->data["Text2"], $players, $tile->data["Text4"]);
